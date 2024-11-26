@@ -5,8 +5,25 @@ import requests
 app = Flask(__name__)
 
 # Environment variables from Render
-SALESFORCE_TOKEN = os.getenv("SALESFORCE_TOKEN")
-SALESFORCE_URL = os.getenv("SALESFORCE_URL")
+SALESFORCE_CONSUMER_KEY = os.getenv("SALESFORCE_CONSUMER_KEY")
+SALESFORCE_CONSUMER_SECRET = os.getenv("SALESFORCE_CONSUMER_SECRET")
+SALESFORCE_INSTANCE_URL = os.getenv("SALESFORCE_INSTANCE_URL")
+SALESFORCE_LOGIN_URL = os.getenv("SALESFORCE_LOGIN_URL")
+SALESFORCE_REDIRECT_URI = os.getenv("SALESFORCE_REDIRECT_URI")
+SALESFORCE_API_VERSION = "v57.0"  # Update this if needed
+
+# Function to obtain access token
+def get_access_token():
+    data = {
+        "grant_type": "client_credentials",
+        "client_id": SALESFORCE_CONSUMER_KEY,
+        "client_secret": SALESFORCE_CONSUMER_SECRET
+    }
+    response = requests.post(f"{SALESFORCE_LOGIN_URL}/services/oauth2/token", data=data)
+    if response.status_code == 200:
+        return response.json().get("access_token")
+    else:
+        raise Exception(f"Error obtaining access token: {response.json()}")
 
 @app.route('/create-lead', methods=['POST'])
 def create_lead():
@@ -21,9 +38,15 @@ def create_lead():
     if not all([name, email, conversation_summary]):
         return jsonify({"error": "Missing required fields"}), 400
 
+    # Get access token
+    try:
+        access_token = get_access_token()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
     # Make Salesforce API request
     headers = {
-        "Authorization": f"Bearer {SALESFORCE_TOKEN}",
+        "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
     lead_data = {
@@ -33,7 +56,8 @@ def create_lead():
         "Description": conversation_summary
     }
 
-    response = requests.post(SALESFORCE_URL, headers=headers, json=lead_data)
+    salesforce_url = f"{SALESFORCE_INSTANCE_URL}/services/data/{SALESFORCE_API_VERSION}/sobjects/Lead"
+    response = requests.post(salesforce_url, headers=headers, json=lead_data)
 
     if response.status_code == 201:
         return jsonify({"message": "Lead created successfully!"}), 201
@@ -42,4 +66,3 @@ def create_lead():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-

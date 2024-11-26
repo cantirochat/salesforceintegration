@@ -12,6 +12,7 @@ SALESFORCE_LOGIN_URL = os.getenv("SALESFORCE_LOGIN_URL")
 SALESFORCE_REDIRECT_URI = os.getenv("SALESFORCE_REDIRECT_URI")
 SALESFORCE_API_VERSION = "v57.0"  # Update this if needed
 
+
 # Function to obtain access token
 def get_access_token():
     data = {
@@ -25,6 +26,7 @@ def get_access_token():
     else:
         raise Exception(f"Error obtaining access token: {response.json()}")
 
+
 @app.route('/create-lead', methods=['POST'])
 def create_lead():
     data = request.json
@@ -34,6 +36,7 @@ def create_lead():
     name = data.get("name")
     email = data.get("email")
     conversation_summary = data.get("conversation_summary")
+    company = data.get("company", "Not Provided")  # Default value for Company
 
     if not all([name, email, conversation_summary]):
         return jsonify({"error": "Missing required fields"}), 400
@@ -53,7 +56,8 @@ def create_lead():
         "FirstName": name.split()[0],
         "LastName": name.split()[1] if " " in name else "Unknown",
         "Email": email,
-        "Description": conversation_summary
+        "Description": conversation_summary,
+        "Company": company  # Add Company field
     }
 
     salesforce_url = f"{SALESFORCE_INSTANCE_URL}/services/data/{SALESFORCE_API_VERSION}/sobjects/Lead"
@@ -63,6 +67,7 @@ def create_lead():
         return jsonify({"message": "Lead created successfully!"}), 201
     else:
         return jsonify({"error": response.json()}), response.status_code
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

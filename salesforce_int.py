@@ -9,7 +9,6 @@ SALESFORCE_CONSUMER_KEY = os.getenv("SALESFORCE_CONSUMER_KEY")
 SALESFORCE_CONSUMER_SECRET = os.getenv("SALESFORCE_CONSUMER_SECRET")
 SALESFORCE_INSTANCE_URL = os.getenv("SALESFORCE_INSTANCE_URL")
 SALESFORCE_LOGIN_URL = os.getenv("SALESFORCE_LOGIN_URL")
-SALESFORCE_REDIRECT_URI = os.getenv("SALESFORCE_REDIRECT_URI")
 SALESFORCE_API_VERSION = "v57.0"  # Update this if needed
 
 
@@ -25,6 +24,33 @@ def get_access_token():
         return response.json().get("access_token")
     else:
         raise Exception(f"Error obtaining access token: {response.json()}")
+
+
+# Function to handle function calls
+@app.route('/handle-function-call', methods=['POST'])
+def handle_function_call():
+    data = request.json
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    function_name = data.get("function_name")
+    arguments = data.get("arguments")
+
+    if not function_name or not arguments:
+        return jsonify({"error": "Missing function_name or arguments"}), 400
+
+    if function_name == "create_salesforce_lead":
+        # Forward the arguments to the create-lead route
+        response = requests.post(
+            "http://127.0.0.1:5000/create-lead",  # Internal call to create-lead route
+            json=arguments
+        )
+        if response.status_code == 201:
+            return jsonify({"message": "Function call executed successfully"}), 201
+        else:
+            return jsonify({"error": response.json()}), response.status_code
+    else:
+        return jsonify({"error": f"Unsupported function: {function_name}"}), 400
 
 
 @app.route('/create-lead', methods=['POST'])
@@ -71,3 +97,4 @@ def create_lead():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
